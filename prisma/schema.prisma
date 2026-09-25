@@ -1,0 +1,412 @@
+// Outhood — OTA MVP database schema
+// Money fields are stored as Int in the smallest currency unit (cents-equivalent)
+// to avoid floating point rounding errors in commission math.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Neon: pooled URL in DATABASE_URL, direct URL for migrations
+}
+
+// ---------- ENUMS ----------
+
+enum Role {
+  CUSTOMER
+  SUPPLIER
+  ADMIN
+}
+
+enum SupplierStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ListingType {
+  ACCOMMODATION
+  EXPERIENCE
+  TOUR_PACKAGE
+}
+
+enum ListingStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  INACTIVE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  COMPLETED
+  REFUND_REQUESTED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  EXPIRED
+  REJECTED
+}
+
+enum ComplaintStatus {
+  OPEN
+  UNDER_REVIEW
+  SUPPLIER_CONTACTED
+  RESOLVED
+  CLOSED
+}
+
+enum RecoveryAction {
+  APOLOGY
+  REBOOKING
+  ALTERNATIVE_SUPPLIER
+  PARTIAL_REFUND
+  FULL_REFUND
+  VOUCHER
+  SUPPLIER_ESCALATION
+  OTHER
+}
+
+// ---------- USERS & AUTH ----------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          Role      @default(CUSTOMER)
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  supplier      Supplier?
+  bookings      Booking[]
+  reviews       Review[]
+  complaints    Complaint[]
+  quotations    Quotation[]
+  notifications Notification[]
+  auditLogs     AuditLog[] @relation("AuditActor")
+  recoveryActionsPerformed ServiceRecovery[] @relation("RecoveryPerformedBy")
+}
+
+// ---------- SUPPLIERS ----------
+
+model Supplier {
+  id                 String         @id @default(cuid())
+  user               User           @relation(fields: [userId], references: [id])
+  userId             String         @unique
+  businessName       String
+  contactPerson      String
+  category           String         // e.g. "Lodge", "Tour Operator", "Activity Provider"
+  location            String
+  description        String
+  websiteUrl         String?
+  registrationInfo   String?        // TO BE VERIFIED: not a legal verification, admin-reviewed text only
+  verificationStatus SupplierStatus @default(PENDING)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  documents  SupplierDocument[]
+  listings   Listing[]
+  bookings   Booking[]
+  commissionOverrides Commission[]
+
+  @@index([verificationStatus])
+}
+
+model SupplierDocument {
+  id         String   @id @default(cuid())
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  supplierId String
+  label      String   // e.g. "Business permit (photo/scan)"
+  fileUrl    String
+  createdAt  DateTime @default(now())
+}
+
+// ---------- DESTINATIONS ----------
+
+model Destination {
+  id          String    @id @default(cuid())
+  name        String
+  region      String?
+  description String
+  imageUrl    String?
+  isSeedData  Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  listings    Listing[]
+  quotations  Quotation[]
+
+  @@unique([name])
+}
+
+// ---------- LISTINGS (accommodation / experience / tour package share one table) ----------
+
+model Listing {
+  id                 String        @id @default(cuid())
+  supplier           Supplier      @relation(fields: [supplierId], references: [id])
+  supplierId         String
+  destination        Destination   @relation(fields: [destinationId], references: [id])
+  destinationId      String
+  type               ListingType
+  title              String
+  description        String
+  basePriceCents      Int           // in KSh smallest unit
+  currency           String        @default("KES")
+  status             ListingStatus @default(PENDING_APPROVAL)
+  cancellationPolicy String
+  instantConfirm     Boolean       @default(true) // MVP default per product decision
+  isSeedData         Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  images      ListingImage[]
+  variants    ListingVariant[]
+  availability Availability[]
+  itineraryItems ItineraryItem[]
+  bookings    Booking[]
+  reviews     Review[]
+  quotations  Quotation[]
+  commissionOverride Commission?
+
+  @@index([type, status])
+  @@index([destinationId])
+}
+
+model ListingImage {
+  id        String  @id @default(cuid())
+  listing   Listing @relation(fields: [listingId], references: [id])
+  listingId String
+  url       String
+  sortOrder Int     @default(0)
+}
+
+// Room types (accommodation) or group-size/tier options (experiences) share this table.
+model ListingVariant {
+  id            String   @id @default(cuid())
+  listing       Listing  @relation(fields: [listingId], references: [id])
+  listingId     String
+  name          String   // e.g. "Deluxe Room", "Group of up to 6"
+  priceOverrideCents Int?
+  maxCapacity   Int?
+
+  availability  Availability[]
+  bookings      Booking[]
+}
+
+model Availability {
+  id           String          @id @default(cuid())
+  listing      Listing         @relation(fields: [listingId], references: [id])
+  listingId    String
+  variant      ListingVariant? @relation(fields: [variantId], references: [id])
+  variantId    String?
+  date         DateTime        @db.Date
+  quantity     Int             // units available that date
+
+  @@unique([listingId, variantId, date])
+  @@index([date])
+}
+
+// Only populated for TOUR_PACKAGE and multi-day EXPERIENCE listings.
+model ItineraryItem {
+  id          String   @id @default(cuid())
+  listing     Listing  @relation(fields: [listingId], references: [id])
+  listingId   String
+  dayNumber   Int
+  time        String?
+  location    String?
+  activity    String
+  description String?
+  meals       String?
+  transport   String?
+  notes       String?
+
+  @@index([listingId, dayNumber])
+}
+
+// ---------- BOOKINGS ----------
+
+model Booking {
+  id               String         @id @default(cuid())
+  reference        String         @unique // human-readable booking reference
+  idempotencyKey   String         @unique // client-generated, prevents duplicate submits
+  customer         User           @relation(fields: [customerId], references: [id])
+  customerId       String
+  listing          Listing        @relation(fields: [listingId], references: [id])
+  listingId        String
+  variant          ListingVariant? @relation(fields: [variantId], references: [id])
+  variantId        String?
+  supplier         Supplier       @relation(fields: [supplierId], references: [id]) // denormalized for supplier dashboard queries
+  supplierId       String
+  startDate        DateTime       @db.Date
+  endDate          DateTime?      @db.Date
+  travellerCount   Int
+  baseAmountCents      Int
+  commissionCents      Int
+  totalAmountCents     Int
+  bookingStatus    BookingStatus  @default(PENDING)
+  paymentStatus    PaymentStatus  @default(UNPAID)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  travellers  Traveller[]
+  payments    Payment[]
+  review      Review?
+  complaints  Complaint[]
+
+  @@index([supplierId, bookingStatus])
+  @@index([customerId])
+}
+
+model Traveller {
+  id        String  @id @default(cuid())
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  bookingId String
+  fullName  String
+  contact   String?
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  booking        Booking       @relation(fields: [bookingId], references: [id])
+  bookingId      String
+  amountCents    Int
+  status         PaymentStatus @default(PENDING)
+  provider       String        @default("MOCK_SANDBOX") // real gateway swapped in later
+  transactionRef String?
+  createdAt      DateTime      @default(now())
+
+  refunds Refund[]
+}
+
+model Refund {
+  id         String   @id @default(cuid())
+  payment    Payment  @relation(fields: [paymentId], references: [id])
+  paymentId  String
+  amountCents Int
+  reason     String
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+}
+
+// ---------- COMMISSION (resolved most-specific-first: listing > supplier > category > global) ----------
+
+model Commission {
+  id          String   @id @default(cuid())
+  listing     Listing? @relation(fields: [listingId], references: [id])
+  listingId   String?  @unique
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId  String?
+  category    ListingType?
+  ratePercent Float
+  createdAt   DateTime @default(now())
+}
+
+// ---------- QUOTATIONS (separate path for custom/complex packages) ----------
+
+model Quotation {
+  id             String          @id @default(cuid())
+  customer       User            @relation(fields: [customerId], references: [id])
+  customerId     String
+  listing        Listing?        @relation(fields: [listingId], references: [id])
+  listingId      String?
+  destination    Destination     @relation(fields: [destinationId], references: [id])
+  destinationId  String
+  startDate      DateTime        @db.Date
+  endDate        DateTime?       @db.Date
+  travellerCount Int
+  baseCostCents      Int
+  commissionCents    Int
+  totalCents         Int
+  validityUntil  DateTime
+  terms          String
+  status         QuotationStatus @default(DRAFT)
+  createdAt      DateTime        @default(now())
+}
+
+// ---------- REVIEWS ----------
+
+model Review {
+  id         String   @id @default(cuid())
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  bookingId  String   @unique // DB-level: one review per completed booking
+  customer   User     @relation(fields: [customerId], references: [id])
+  customerId String
+  listing    Listing  @relation(fields: [listingId], references: [id])
+  listingId  String
+  rating     Int      // 1-5, enforced in service layer
+  comment    String
+  createdAt  DateTime @default(now())
+}
+
+// ---------- COMPLAINTS & SERVICE RECOVERY ----------
+
+model Complaint {
+  id          String          @id @default(cuid())
+  booking     Booking         @relation(fields: [bookingId], references: [id])
+  bookingId   String
+  customer    User            @relation(fields: [customerId], references: [id])
+  customerId  String
+  category    String
+  description String
+  priority    String          @default("MEDIUM")
+  status      ComplaintStatus @default(OPEN)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  recoveryActions ServiceRecovery[]
+}
+
+model ServiceRecovery {
+  id           String         @id @default(cuid())
+  complaint    Complaint      @relation(fields: [complaintId], references: [id])
+  complaintId  String
+  actionType   RecoveryAction
+  notes        String
+  performedBy  User           @relation("RecoveryPerformedBy", fields: [performedById], references: [id])
+  performedById String
+  createdAt    DateTime       @default(now())
+}
+
+// ---------- NOTIFICATIONS & AUDIT ----------
+
+model Notification {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  type      String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actor      User     @relation("AuditActor", fields: [actorId], references: [id])
+  actorId    String
+  action     String   // e.g. "SUPPLIER_APPROVED", "COMMISSION_CHANGED"
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
