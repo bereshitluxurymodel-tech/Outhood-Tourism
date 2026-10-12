@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function AdminNav() {
   return (
-    <nav className="flex gap-4 border-b border-sandDeep pb-3 text-sm text-ink/60 dark:border-nightBorder dark:text-nightInk/60">
+    <nav className="flex flex-wrap gap-x-4 gap-y-2 border-b border-sandDeep pb-3 text-sm text-ink/60 dark:border-nightBorder dark:text-nightInk/60">
       <Link href="/admin/dashboard" className="hover:text-ink dark:hover:text-nightInk">
         Dashboard
       </Link>

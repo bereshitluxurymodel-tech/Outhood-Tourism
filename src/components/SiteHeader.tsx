@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LogoutButton } from "@/components/LogoutButton";
 import { OuthoodMark } from "@/components/OuthoodMark";
+import { MobileMenu } from "@/components/MobileMenu";
 
 export async function SiteHeader() {
   const [session, destinations] = await Promise.all([
@@ -12,34 +13,33 @@ export async function SiteHeader() {
     prisma.destination.findMany({ orderBy: { name: "asc" }, take: 8 }),
   ]);
   const user = session?.user as { name?: string | null; role?: string } | undefined;
+  const menuUser = user ? { name: user.name, role: user.role } : null;
+  const menuDestinations = destinations.map((d) => ({ id: d.id, name: d.name }));
 
   return (
     <header className="relative z-50 border-b border-sandDeep bg-white/80 backdrop-blur dark:border-nightBorder dark:bg-night/80">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
         <Link href="/" className="flex items-center gap-2 font-display text-lg text-ink dark:text-nightInk">
           <OuthoodMark className="h-8 w-8 shrink-0 rounded-full" />
           Outhood
         </Link>
-        <nav className="flex items-center gap-6 text-sm text-ink/70 dark:text-nightInk/70">
+
+        {/* Desktop navigation (md and up) */}
+        <nav className="hidden items-center gap-6 text-sm text-ink/70 dark:text-nightInk/70 md:flex">
           <Link href="/search" className="hover:text-ink dark:hover:text-nightInk">
             Browse
           </Link>
 
-          {/* Destinations, visible directly in the nav rather than buried
-              inside the homepage — a CSS-only hover dropdown (no JS
-              needed) listing every seeded destination as a direct link. */}
+          {/* CSS-only dropdown: opens on hover OR keyboard/tap focus */}
           {destinations.length > 0 && (
             <div className="group relative">
-              <button
-                type="button"
-                className="flex items-center gap-1 hover:text-ink dark:hover:text-nightInk"
-              >
+              <button type="button" className="flex items-center gap-1 hover:text-ink dark:hover:text-nightInk">
                 Destinations
                 <svg width="10" height="10" viewBox="0 0 10 10" className="mt-px" aria-hidden>
                   <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" />
                 </svg>
               </button>
-              <div className="invisible absolute left-0 top-full z-10 mt-2 w-48 rounded-card border border-sandDeep bg-white py-2 opacity-0 shadow-md transition-opacity group-hover:visible group-hover:opacity-100 dark:border-nightBorder dark:bg-nightCard">
+              <div className="invisible absolute left-0 top-full z-10 mt-2 w-48 rounded-card border border-sandDeep bg-white py-2 opacity-0 shadow-md transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100 dark:border-nightBorder dark:bg-nightCard">
                 {destinations.map((d) => (
                   <Link
                     key={d.id}
@@ -53,9 +53,6 @@ export async function SiteHeader() {
             </div>
           )}
 
-          {/* Once logged in as a supplier (or admin), this is the only way
-              to reach the portal — without it, the dashboard was only
-              reachable by typing the URL directly. */}
           {user && (
             <Link href="/dashboard" className="hover:text-ink dark:hover:text-nightInk">
               My bookings
@@ -83,13 +80,27 @@ export async function SiteHeader() {
               <LogoutButton />
             </>
           ) : (
-            <Link href="/login" className="hover:text-ink dark:hover:text-nightInk">
-              Log in
-            </Link>
+            <>
+              <Link href="/login" className="hover:text-ink dark:hover:text-nightInk">
+                Log in
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-md bg-savanna px-4 py-2 font-medium text-white hover:bg-savannaDark"
+              >
+                Sign up
+              </Link>
+            </>
           )}
 
           <ThemeToggle />
         </nav>
+
+        {/* Mobile: theme toggle + hamburger (below md) */}
+        <div className="flex items-center gap-3 md:hidden">
+          <ThemeToggle />
+          <MobileMenu user={menuUser} destinations={menuDestinations} />
+        </div>
       </div>
     </header>
   );

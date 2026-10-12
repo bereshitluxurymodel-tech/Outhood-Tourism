@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,6 +32,12 @@ export default function LoginPage() {
       <p className="mt-2 text-sm text-ink/60 dark:text-nightInk/60">
         Demo accounts (password <code>Outhood!Demo1</code> for all): admin@outhood.dev,
         supplier@outhood.dev, customer@outhood.dev
+      </p>
+      <p className="mt-2 text-sm text-ink/60 dark:text-nightInk/60">
+        New here?{" "}
+        <Link href="/register" className="font-medium text-savannaDark underline dark:text-savanna">
+          Create an account
+        </Link>
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">

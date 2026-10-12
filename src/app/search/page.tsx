@@ -35,19 +35,19 @@ export default async function SearchPage({
           name="destination"
           defaultValue={searchParams.destination ?? ""}
           placeholder="Destination"
-          className="rounded-md border border-sandDeep bg-transparent px-3 py-2 text-sm text-ink outline-none focus:border-savanna dark:border-nightBorder dark:text-nightInk"
+          className="w-full rounded-md border border-sandDeep bg-transparent px-3 py-2 text-base text-ink sm:w-auto sm:text-sm outline-none focus:border-savanna dark:border-nightBorder dark:text-nightInk"
         />
         <input
           type="text"
           name="q"
           defaultValue={searchParams.q ?? ""}
           placeholder="Search by name"
-          className="rounded-md border border-sandDeep bg-transparent px-3 py-2 text-sm text-ink outline-none focus:border-savanna dark:border-nightBorder dark:text-nightInk"
+          className="w-full rounded-md border border-sandDeep bg-transparent px-3 py-2 text-base text-ink sm:w-auto sm:text-sm outline-none focus:border-savanna dark:border-nightBorder dark:text-nightInk"
         />
         <select
           name="type"
           defaultValue={searchParams.type ?? ""}
-          className="rounded-md border border-sandDeep bg-transparent px-3 py-2 text-sm text-ink outline-none focus:border-savanna dark:border-nightBorder dark:text-nightInk"
+          className="w-full rounded-md border border-sandDeep bg-transparent px-3 py-2 text-base text-ink sm:w-auto sm:text-sm outline-none focus:border-savanna dark:border-nightBorder dark:text-nightInk"
         >
           {TYPE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value} className="text-ink">
@@ -57,7 +57,7 @@ export default async function SearchPage({
         </select>
         <button
           type="submit"
-          className="rounded-md bg-savanna px-5 py-2 text-sm font-medium text-white hover:bg-savannaDark"
+          className="w-full rounded-md bg-savanna px-5 py-2 text-sm font-medium text-white hover:bg-savannaDark sm:w-auto"
         >
           Filter
         </button>

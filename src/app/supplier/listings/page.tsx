@@ -45,7 +45,7 @@ export default async function SupplierListingsPage() {
             <Link
               key={listing.id}
               href={`/supplier/listings/${listing.id}/edit`}
-              className="flex items-center justify-between p-4 hover:bg-sand dark:hover:bg-nightCard"
+              className="flex items-center justify-between gap-3 p-4 hover:bg-sand dark:hover:bg-nightCard"
             >
               <div>
                 <p className="font-medium text-ink dark:text-nightInk">{listing.title}</p>
