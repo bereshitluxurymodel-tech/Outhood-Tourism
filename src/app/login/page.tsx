@@ -29,10 +29,16 @@ export default function LoginPage() {
   return (
     <main className="mx-auto max-w-sm px-6 py-20">
       <h1 className="font-display text-2xl text-ink dark:text-nightInk">Log in</h1>
-      <p className="mt-2 text-sm text-ink/60 dark:text-nightInk/60">
-        Demo accounts (password <code>Outhood!Demo1</code> for all): admin@outhood.dev,
-        supplier@outhood.dev, customer@outhood.dev
-      </p>
+      {/* Demo credentials are shown ONLY when running locally (npm run dev).
+          Next.js replaces NODE_ENV at build time, so in the production
+          build on Vercel/Render this block is removed entirely — it never
+          reaches the public site. */}
+      {process.env.NODE_ENV !== "production" && (
+        <p className="mt-2 text-sm text-ink/60 dark:text-nightInk/60">
+          Local demo accounts (password <code>Outhood!Demo1</code>): admin@outhood.dev,
+          supplier@outhood.dev, customer@outhood.dev
+        </p>
+      )}
       <p className="mt-2 text-sm text-ink/60 dark:text-nightInk/60">
         New here?{" "}
         <Link href="/register" className="font-medium text-savannaDark underline dark:text-savanna">
