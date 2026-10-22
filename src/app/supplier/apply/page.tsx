@@ -12,17 +12,26 @@ export default async function SupplierApplyPage() {
     return (
       <main className="mx-auto max-w-lg px-6 py-24 text-center">
         <h1 className="font-display text-2xl text-ink dark:text-nightInk">
-          Log in to apply as a supplier
+          Create an account to list your business
         </h1>
         <p className="mt-3 text-ink/60 dark:text-nightInk/60">
-          You&apos;ll need an Outhood account first — it&apos;s the same login travellers use.
+          Suppliers use the same account as travellers. Sign up (or log in if you already have
+          one), then you&apos;ll come straight back here to tell us about your business.
         </p>
-        <Link
-          href="/login"
-          className="mt-6 inline-block rounded-md bg-savanna px-6 py-3 font-medium text-white hover:bg-savannaDark"
-        >
-          Log in
-        </Link>
+        <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link
+            href="/register?next=/supplier/apply"
+            className="rounded-md bg-savanna px-6 py-3 font-medium text-white hover:bg-savannaDark"
+          >
+            Create an account
+          </Link>
+          <Link
+            href="/login?next=/supplier/apply"
+            className="rounded-md border border-sandDeep px-6 py-3 font-medium text-ink hover:bg-sandDeep dark:border-nightBorder dark:text-nightInk dark:hover:bg-nightBorder"
+          >
+            Log in
+          </Link>
+        </div>
       </main>
     );
   }

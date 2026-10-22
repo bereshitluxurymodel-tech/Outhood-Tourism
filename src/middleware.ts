@@ -13,10 +13,13 @@ export default withAuth(
     if (path.startsWith("/admin") && token?.role !== "ADMIN") {
       return NextResponse.redirect(new URL("/", req.url));
     }
-    const isSupplierPortalPath = path.startsWith("/supplier") && !path.startsWith("/supplier/apply");
-    if (isSupplierPortalPath && !["SUPPLIER", "ADMIN"].includes(token?.role as string)) {
-      return NextResponse.redirect(new URL("/", req.url));
-    }
+    // NOTE: /supplier/* is deliberately NOT role-gated here. This middleware
+    // reads the role straight from the login cookie, which is only issued at
+    // sign-in — so someone who has just applied to become a supplier still
+    // carries a stale "CUSTOMER" role and would be bounced off the dashboard
+    // they just unlocked. Supplier pages and API routes instead verify on the
+    // server that the user has a real Supplier record (a stricter check than
+    // a role label) and redirect to /supplier/apply if not.
     return NextResponse.next();
   },
   {

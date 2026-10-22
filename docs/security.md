@@ -50,3 +50,15 @@ write an `AuditLog` row: actor, action, entity, timestamp, metadata.
   CSRF token would be added before any real payment integration.
 - File upload validation (type/size limits) is scaffolded but not yet
   wired to a real storage backend in this phase.
+
+
+## Why `/supplier/*` is not role-gated in middleware
+The middleware reads the role from the login cookie, which is issued at
+sign-in and not updated when a role changes. A user who has just applied to
+become a supplier therefore still looks like a CUSTOMER to the middleware.
+Role-gating `/supplier/*` there locked new suppliers out of the dashboard they
+had just unlocked. Instead, `/supplier/*` requires a login only, and every
+supplier page and API route verifies on the server that the user owns a
+Supplier record (`getSupplierByUserId`) — which is a stricter check than the
+role label. `/admin/*` remains role-gated in middleware **and** re-checked
+server-side in each admin page and API route.

@@ -74,7 +74,7 @@ export function MobileMenu({ user, destinations }: Props) {
                 Admin
               </Link>
             )}
-            {!user && (
+            {(!user || user.role === "CUSTOMER") && (
               <Link href="/supplier/apply" onClick={close} className={linkClass}>
                 List your business
               </Link>

@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const inputClass =
   "rounded-md border border-sandDeep bg-white px-4 py-3 text-base text-ink outline-none focus:border-savanna dark:border-nightBorder dark:bg-nightCard dark:text-nightInk";
+
+// Where to go after signing in. Only same-site paths are accepted
+// ("/something", never "//evil.com" or a full URL) so a crafted link
+// can't bounce someone to another website after login.
+function getNextPath(): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -15,6 +23,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  useEffect(() => setSearch(window.location.search), []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +52,7 @@ export default function RegisterPage() {
       router.push("/login");
       return;
     }
-    router.push("/");
+    router.push(getNextPath());
     router.refresh();
   }
 
@@ -51,7 +61,7 @@ export default function RegisterPage() {
       <h1 className="font-display text-2xl text-ink dark:text-nightInk">Create your account</h1>
       <p className="mt-2 text-sm text-ink/60 dark:text-nightInk/60">
         Already have one?{" "}
-        <Link href="/login" className="font-medium text-savannaDark underline dark:text-savanna">
+        <Link href={`/login${search}`} className="font-medium text-savannaDark underline dark:text-savanna">
           Log in
         </Link>
       </p>

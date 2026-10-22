@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+// Where to go after signing in. Only same-site paths are accepted
+// ("/something", never "//evil.com" or a full URL) so a crafted link
+// can't bounce someone to another website after login.
+function getNextPath(): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +19,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Carry ?next=... across to the sign-up page. Set after mount (not read
+  // during render) so server and browser HTML always match.
+  const [search, setSearch] = useState("");
+  useEffect(() => setSearch(window.location.search), []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,26 +34,16 @@ export default function LoginPage() {
       setError("Incorrect email or password.");
       return;
     }
-    router.push("/");
+    router.push(getNextPath());
     router.refresh();
   }
 
   return (
     <main className="mx-auto max-w-sm px-6 py-20">
       <h1 className="font-display text-2xl text-ink dark:text-nightInk">Log in</h1>
-      {/* Demo credentials are shown ONLY when running locally (npm run dev).
-          Next.js replaces NODE_ENV at build time, so in the production
-          build on Vercel/Render this block is removed entirely — it never
-          reaches the public site. */}
-      {process.env.NODE_ENV !== "production" && (
-        <p className="mt-2 text-sm text-ink/60 dark:text-nightInk/60">
-          Local demo accounts (password <code>Outhood!Demo1</code>): admin@outhood.dev,
-          supplier@outhood.dev, customer@outhood.dev
-        </p>
-      )}
       <p className="mt-2 text-sm text-ink/60 dark:text-nightInk/60">
         New here?{" "}
-        <Link href="/register" className="font-medium text-savannaDark underline dark:text-savanna">
+        <Link href={`/register${search}`} className="font-medium text-savannaDark underline dark:text-savanna">
           Create an account
         </Link>
       </p>

@@ -12,11 +12,15 @@ async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
   // --- Demo accounts ---
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@outhood.dev" },
-    update: {},
-    create: { name: "Outhood Admin", email: "admin@outhood.dev", passwordHash, role: "ADMIN" },
-  });
+  // Find-or-create by ROLE, not by the default email: once the admin's
+  // email/password have been rotated (npm run db:rotate-credentials),
+  // re-running this seed must NOT quietly recreate admin@outhood.dev with
+  // the well-known demo password.
+  const admin =
+    (await prisma.user.findFirst({ where: { role: "ADMIN" } })) ??
+    (await prisma.user.create({
+      data: { name: "Outhood Admin", email: "admin@outhood.dev", passwordHash, role: "ADMIN" },
+    }));
 
   const supplierUser = await prisma.user.upsert({
     where: { email: "supplier@outhood.dev" },

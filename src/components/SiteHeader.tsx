@@ -68,7 +68,7 @@ export async function SiteHeader() {
               Admin
             </Link>
           )}
-          {!user && (
+          {(!user || user.role === "CUSTOMER") && (
             <Link href="/supplier/apply" className="hover:text-ink dark:hover:text-nightInk">
               List your business
             </Link>
